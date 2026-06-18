@@ -1,0 +1,73 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: taskflow-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: taskflow_pro
+      MYSQL_USER: taskflow
+      MYSQL_PASSWORD: taskflow123
+    ports:
+      - "3308:3306"
+    volumes:
+      - taskflow_mysql:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: taskflow-redis
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - taskflow_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: taskflow-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_PORT: 8080
+      GIN_MODE: release
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: taskflow
+      DB_PASSWORD: taskflow123
+      DB_NAME: taskflow_pro
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: taskflow-compose-secret
+      JWT_TTL_HOURS: 24
+    ports:
+      - "8090:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: taskflow-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3001:80"
+
+volumes:
+  taskflow_mysql:
+  taskflow_redis:
+

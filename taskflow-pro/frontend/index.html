@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaskFlow Pro</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">T</div>
+          <div>
+            <h1>TaskFlow Pro</h1>
+            <p>团队任务协作系统</p>
+          </div>
+        </div>
+
+        <section id="auth-panel" class="panel auth-panel">
+          <h2>登录 / 注册</h2>
+          <input id="email" type="email" placeholder="邮箱" />
+          <input id="username" type="text" placeholder="用户名（注册时填写）" />
+          <input id="password" type="password" placeholder="密码" />
+          <div class="button-row">
+            <button id="login-btn" class="primary">登录</button>
+            <button id="register-btn">注册</button>
+          </div>
+        </section>
+
+        <section id="user-panel" class="panel hidden">
+          <p class="label">当前用户</p>
+          <h2 id="current-user">未登录</h2>
+          <button id="logout-btn">退出登录</button>
+        </section>
+
+        <section class="panel">
+          <div class="section-title">
+            <h2>项目空间</h2>
+            <button id="refresh-projects">刷新</button>
+          </div>
+          <div id="project-list" class="project-list"></div>
+          <input id="project-name" type="text" placeholder="新项目名称" />
+          <textarea id="project-desc" rows="2" placeholder="项目描述"></textarea>
+          <button id="create-project-btn" class="primary">创建项目</button>
+        </section>
+
+        <section class="panel">
+          <h2>添加成员</h2>
+          <input id="member-user-id" type="number" placeholder="用户 ID" />
+          <button id="add-member-btn">添加到当前项目</button>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="label">当前项目</p>
+            <h2 id="active-project-title">请选择或创建一个项目</h2>
+          </div>
+          <div id="toast" class="toast hidden"></div>
+        </header>
+
+        <section class="stats-grid">
+          <article class="stat-card">
+            <span>全部任务</span>
+            <strong id="stat-total">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>待处理</span>
+            <strong id="stat-todo">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>进行中</span>
+            <strong id="stat-doing">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>已完成</span>
+            <strong id="stat-done">0</strong>
+          </article>
+        </section>
+
+        <section class="task-composer">
+          <input id="task-title" type="text" placeholder="任务标题" />
+          <select id="task-priority">
+            <option value="medium">中优先级</option>
+            <option value="high">高优先级</option>
+            <option value="low">低优先级</option>
+          </select>
+          <textarea id="task-desc" rows="2" placeholder="任务描述"></textarea>
+          <button id="create-task-btn" class="primary">创建任务</button>
+        </section>
+
+        <section class="filters">
+          <input id="keyword" type="search" placeholder="按标题搜索任务" />
+          <button data-filter="">全部</button>
+          <button data-filter="todo">待处理</button>
+          <button data-filter="doing">进行中</button>
+          <button data-filter="done">已完成</button>
+        </section>
+
+        <section class="kanban">
+          <div class="column" data-status="todo">
+            <h3>待处理</h3>
+            <div id="todo-list" class="task-list"></div>
+          </div>
+          <div class="column" data-status="doing">
+            <h3>进行中</h3>
+            <div id="doing-list" class="task-list"></div>
+          </div>
+          <div class="column" data-status="done">
+            <h3>已完成</h3>
+            <div id="done-list" class="task-list"></div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="detail-panel">
+        <p class="label">任务详情</p>
+        <h2 id="detail-title">选择任务查看详情</h2>
+        <p id="detail-desc" class="muted"></p>
+        <div id="comment-list" class="comments"></div>
+        <textarea id="comment-content" rows="3" placeholder="写一条评论"></textarea>
+        <button id="create-comment-btn">发表评论</button>
+      </aside>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
+
