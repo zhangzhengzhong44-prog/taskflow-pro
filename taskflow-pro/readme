@@ -82,28 +82,6 @@ TaskFlow Pro 是一个前后端分离的团队任务协作系统。
 ---
 
 ## 4. 系统架构
-
-```mermaid
-flowchart LR
-    A[浏览器] --> B[前端页面<br/>HTML / CSS / JavaScript]
-    B -->|HTTP /api/v1| C[Go Backend<br/>Gin Router]
-
-    C --> D[Middleware]
-    D --> D1[Request Logger]
-    D --> D2[CORS]
-    D --> D3[Redis Rate Limit]
-    D --> D4[JWT Auth]
-
-    C --> E[Handler]
-    E --> F[Service]
-    F --> G[Repository]
-
-    G --> H[(MySQL)]
-    F --> I[(Redis)]
-
-    J[Nginx] --> B
-```
-
 后端采用分层架构：
 
 ```text
@@ -158,22 +136,6 @@ taskflow-pro/
 
 ## 5. 功能页面截图
 
-> 将本地启动后的真实页面截图保存为：
->
-> `docs/images/taskflow-dashboard.png`
-
-建议截图时展示以下内容：
-
-* 已登录用户信息
-* 当前项目名称
-* 总任务、待办、进行中、已完成四项统计数据
-* Todo、Doing、Done 三列任务看板
-* 至少 3～5 条任务
-* 右侧任务评论区域
-
-![TaskFlow Pro 项目任务看板](./docs/images/taskflow-dashboard.png)
-
----
 
 ## 6. API 概览
 
