@@ -11,6 +11,7 @@ TaskFlow Pro
 任务闭环：支持任务创建、状态管理（`todo` / `doing` / `done`）、优先级、负责人、截止时间、关键字/状态筛选、软删除与评论。
 缓存与可靠性：项目任务统计使用 Redis 缓存（TTL 2 分钟），任务增删改后主动失效；同时实现请求日志、异常恢复、CORS 和基于 IP 的限流。
 可测试的分层设计：按 `Handler → Service → Repository` 分层；Service 依赖接口，可替换为 fake repository / memory cache 进行单元测试。
+
 架构
 
 Browser
@@ -96,7 +97,7 @@ curl -X POST http://localhost:8090/api/v1/auth/register \
   -d '{"username":"demo","email":"demo@example.com","password":"123456"}'
 ```
 
-## 测试
+测试
 
 ```bash
 cd backend
@@ -105,7 +106,7 @@ go test ./...
 
 测试覆盖认证、JWT 鉴权、任务状态校验及项目成员权限等核心业务链路。
 
-## 项目结构
+项目结构
 
 ```text
 taskflow-pro/
