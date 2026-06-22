@@ -1,20 +1,18 @@
-# TaskFlow Pro
+TaskFlow Pro
 
 一个面向小团队协作的轻量级任务管理系统。支持用户认证、项目成员管理、任务看板、任务评论与项目进度统计。
 
-**技术栈：** Go 1.21 · Gin · GORM · MySQL 8 · Redis 7 · JWT · Docker Compose · Nginx
+技术栈： Go 1.21 · Gin · GORM · MySQL 8 · Redis 7 · JWT · Docker Compose · Nginx
 
-## 项目亮点
+项目亮点
 
-- **认证与接口保护**：注册/登录使用 bcrypt 加密密码，签发 HS256 JWT；受保护接口统一由中间件校验身份。
-- **项目协作权限**：项目创建时通过事务同步创建 owner 成员记录；仅项目 owner 可添加成员，成员才可查看、创建和维护项目内任务。
-- **任务闭环**：支持任务创建、状态管理（`todo` / `doing` / `done`）、优先级、负责人、截止时间、关键字/状态筛选、软删除与评论。
-- **缓存与可靠性**：项目任务统计使用 Redis 缓存（TTL 2 分钟），任务增删改后主动失效；同时实现请求日志、异常恢复、CORS 和基于 IP 的限流。
-- **可测试的分层设计**：按 `Handler → Service → Repository` 分层；Service 依赖接口，可替换为 fake repository / memory cache 进行单元测试。
+认证与接口保护：注册/登录使用 bcrypt 加密密码，签发 HS256 JWT；受保护接口统一由中间件校验身份。
+项目协作权限：项目创建时通过事务同步创建 owner 成员记录；仅项目 owner 可添加成员，成员才可查看、创建和维护项目内任务。
+任务闭环：支持任务创建、状态管理（`todo` / `doing` / `done`）、优先级、负责人、截止时间、关键字/状态筛选、软删除与评论。
+缓存与可靠性：项目任务统计使用 Redis 缓存（TTL 2 分钟），任务增删改后主动失效；同时实现请求日志、异常恢复、CORS 和基于 IP 的限流。
+可测试的分层设计：按 `Handler → Service → Repository` 分层；Service 依赖接口，可替换为 fake repository / memory cache 进行单元测试。
+架构
 
-## 架构
-
-```text
 Browser
   │
   ▼
@@ -28,9 +26,9 @@ Gin Router
   └─ Repository：GORM 数据访问
        ├─ MySQL：业务数据持久化
        └─ Redis：用户与项目统计缓存、限流计数
-```
 
-## 核心功能
+
+核心功能
 
 | 模块 | 功能 |
 | --- | --- |
@@ -40,7 +38,7 @@ Gin Router
 | 任务看板 | `todo`、`doing`、`done` 三列展示与状态更新 |
 | 评论与统计 | 任务评论、项目任务总数及各状态数量统计 |
 
-## 数据关系
+数据关系
 
 ```text
 User ──< ProjectMember >── Project ──< Task ──< Comment
@@ -50,9 +48,9 @@ User ──< ProjectMember >── Project ──< Task ──< Comment
 
 主要表：`users`、`projects`、`project_members`、`tasks`、`comments`。应用启动时由 GORM 自动迁移表结构。
 
-## 快速启动
+快速启动
 
-### 方式一：Docker Compose（推荐）
+方式一：Docker Compose（推荐）
 
 ```bash
 git clone https://github.com/zhangzhengzhong44-prog/taskflow-pro.git
@@ -75,7 +73,7 @@ docker compose down
 
 > `docker-compose.yml` 中的账号和 JWT 配置仅用于本地演示；部署到真实环境时应改为通过 `.env` 或密钥管理服务注入。
 
-## API 概览
+ API 概览
 
 除注册、登录和健康检查外，其余接口需携带：
 
