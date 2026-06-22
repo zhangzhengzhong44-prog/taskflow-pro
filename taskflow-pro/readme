@@ -1,588 +1,125 @@
 # TaskFlow Pro
 
-> 一个面向小型团队协作场景的任务管理系统，支持用户认证、项目与成员管理、任务看板、评论讨论和项目任务统计。
+一个面向小团队协作的轻量级任务管理系统。支持用户认证、项目成员管理、任务看板、任务评论与项目进度统计。
 
-## 1. 项目简介
+**技术栈：** Go 1.21 · Gin · GORM · MySQL 8 · Redis 7 · JWT · Docker Compose · Nginx
 
-TaskFlow Pro 是一个前后端分离的团队任务协作系统。
+## 项目亮点
 
-用户可注册并登录系统，创建项目，邀请成员加入项目，在项目内创建、更新和删除任务，并通过任务状态看板追踪工作进度。系统同时提供评论功能和项目任务统计能力，便于团队成员围绕任务进行协作。
+- **认证与接口保护**：注册/登录使用 bcrypt 加密密码，签发 HS256 JWT；受保护接口统一由中间件校验身份。
+- **项目协作权限**：项目创建时通过事务同步创建 owner 成员记录；仅项目 owner 可添加成员，成员才可查看、创建和维护项目内任务。
+- **任务闭环**：支持任务创建、状态管理（`todo` / `doing` / `done`）、优先级、负责人、截止时间、关键字/状态筛选、软删除与评论。
+- **缓存与可靠性**：项目任务统计使用 Redis 缓存（TTL 2 分钟），任务增删改后主动失效；同时实现请求日志、异常恢复、CORS 和基于 IP 的限流。
+- **可测试的分层设计**：按 `Handler → Service → Repository` 分层；Service 依赖接口，可替换为 fake repository / memory cache 进行单元测试。
 
-项目后端采用 Go 构建，使用 Gin 提供 RESTful API，通过 MySQL 持久化业务数据，Redis 用于缓存项目任务统计数据和接口限流。
-
----
-
-## 2. 核心功能
-
-### 用户认证
-
-* 用户注册与登录
-* bcrypt 加密存储密码
-* JWT 身份认证
-* 获取当前登录用户信息
-* 未登录用户无法访问项目、任务和评论接口
-
-### 项目管理
-
-* 创建项目
-* 获取当前用户参与的项目列表
-* 创建项目时自动初始化项目创建者为 Owner
-* 项目 Owner 可邀请其他用户加入项目
-* 项目成员分为 `owner` 和 `member` 两类角色
-
-### 任务管理
-
-* 在项目内创建任务
-* 支持任务标题、描述、负责人、优先级和截止日期
-* 支持任务状态管理：`todo`、`doing`、`done`
-* 支持任务优先级：`low`、`medium`、`high`
-* 支持按状态和关键词筛选任务
-* 支持更新任务内容、状态和负责人
-* 支持软删除任务
-
-### 评论与协作
-
-* 获取任务评论列表
-* 在任务下发布评论
-* 评论与任务、用户建立关联，保留协作讨论记录
-
-### 项目统计与缓存
-
-* 提供项目任务总数、待办、进行中、已完成任务统计
-* 使用 Redis 缓存项目任务统计结果
-* 任务创建、更新或删除后主动失效对应项目缓存，避免统计数据长期不一致
-
-### 工程化能力
-
-* Handler / Service / Repository 分层设计
-* MySQL 自动建表与模型迁移
-* Redis 健康检查与缓存连接
-* Gin 请求日志、异常恢复、CORS 与 JWT 中间件
-* 基于 Redis 的 IP 限流
-* Docker Compose 一键启动前端、后端、MySQL 与 Redis
-* 单元测试覆盖认证、JWT、成员权限与任务状态等核心逻辑
-
----
-
-## 3. 技术栈
-
-| 分类         | 技术                                  |
-| ---------- | ----------------------------------- |
-| 后端语言       | Go                                  |
-| Web 框架     | Gin                                 |
-| ORM        | GORM                                |
-| 数据库        | MySQL 8                             |
-| 缓存与限流      | Redis 7                             |
-| 身份认证       | JWT + bcrypt                        |
-| 前端         | HTML、CSS、JavaScript                 |
-| Web Server | Nginx                               |
-| 容器化        | Docker、Docker Compose               |
-| 测试         | Go testing、httptest、Fake Repository |
-
----
-
-## 4. 系统架构
-后端采用分层架构：
+## 架构
 
 ```text
-Handler：负责解析 HTTP 请求和返回响应
-    ↓
-Service：负责认证、权限、缓存失效和业务规则
-    ↓
-Repository：负责数据库读写
-    ↓
-MySQL / Redis
+Browser
+  │
+  ▼
+Nginx / 原生前端（HTML + CSS + JavaScript）
+  │
+  ▼
+Gin Router
+  ├─ Middleware：Recovery / Logger / CORS / Rate Limit / JWT Auth
+  ├─ Handler：参数绑定与统一响应
+  ├─ Service：鉴权、成员权限、任务规则、缓存失效
+  └─ Repository：GORM 数据访问
+       ├─ MySQL：业务数据持久化
+       └─ Redis：用户与项目统计缓存、限流计数
 ```
 
-目录结构如下：
+## 核心功能
+
+| 模块 | 功能 |
+| --- | --- |
+| 用户认证 | 注册、登录、获取当前用户 |
+| 项目协作 | 创建/查看项目、owner 添加项目成员 |
+| 任务管理 | 创建、查询、更新、删除任务；状态/关键字筛选 |
+| 任务看板 | `todo`、`doing`、`done` 三列展示与状态更新 |
+| 评论与统计 | 任务评论、项目任务总数及各状态数量统计 |
+
+## 数据关系
 
 ```text
-taskflow-pro/
-├── backend/
-│   ├── cmd/
-│   │   └── server/              # 服务启动入口
-│   ├── internal/
-│   │   ├── config/              # 环境变量与配置加载
-│   │   ├── database/            # MySQL、Redis 初始化
-│   │   ├── handler/             # HTTP 请求处理
-│   │   ├── middleware/          # JWT、日志、限流、CORS
-│   │   ├── model/               # 数据模型与请求结构
-│   │   ├── repository/          # 数据访问层
-│   │   ├── response/            # 统一响应封装
-│   │   ├── router/              # 路由注册
-│   │   └── service/             # 核心业务逻辑与测试
-│   ├── Dockerfile
-│   └── go.mod
-│
-├── frontend/
-│   ├── index.html
-│   ├── app.js
-│   ├── styles.css
-│   ├── nginx.conf
-│   └── Dockerfile
-│
-├── deploy/
-│   └── mysql/
-│       └── init.sql
-│
-├── docs/
-│   ├── images/
-│   └── testing.md
-│
-└── docker-compose.yml
+User ──< ProjectMember >── Project ──< Task ──< Comment
+                            │
+                            └── owner / member
 ```
 
----
+主要表：`users`、`projects`、`project_members`、`tasks`、`comments`。应用启动时由 GORM 自动迁移表结构。
 
-## 5. 功能页面截图
+## 快速启动
 
-
-## 6. API 概览
-
-接口基础地址：
-
-```text
-http://localhost:8090/api/v1
-```
-
-除注册、登录和健康检查外，其余接口均需要携带 JWT：
-
-```http
-Authorization: Bearer <token>
-```
-
-| 方法     | 路径                      | 说明         | 是否鉴权    |
-| ------ | ----------------------- | ---------- | ------- |
-| GET    | `/health`               | 服务健康检查     | 否       |
-| POST   | `/auth/register`        | 用户注册       | 否       |
-| POST   | `/auth/login`           | 用户登录       | 否       |
-| GET    | `/auth/me`              | 获取当前用户信息   | 是       |
-| GET    | `/projects`             | 获取当前用户项目列表 | 是       |
-| POST   | `/projects`             | 创建项目       | 是       |
-| POST   | `/projects/:id/members` | 添加项目成员     | 是，Owner |
-| GET    | `/projects/:id/stats`   | 获取项目任务统计   | 是，项目成员  |
-| GET    | `/projects/:id/tasks`   | 获取项目任务列表   | 是，项目成员  |
-| POST   | `/projects/:id/tasks`   | 创建项目任务     | 是，项目成员  |
-| PUT    | `/tasks/:id`            | 更新任务       | 是，项目成员  |
-| DELETE | `/tasks/:id`            | 删除任务       | 是，项目成员  |
-| GET    | `/tasks/:id/comments`   | 获取任务评论     | 是，项目成员  |
-| POST   | `/tasks/:id/comments`   | 创建任务评论     | 是，项目成员  |
-
----
-
-## 7. 接口示例
-
-### 7.1 用户注册
+### 方式一：Docker Compose（推荐）
 
 ```bash
-curl -X POST http://localhost:8090/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "alice",
-    "email": "alice@example.com",
-    "password": "123456"
-  }'
-```
-
-注册字段说明：
-
-| 字段       | 说明           |
-| -------- | ------------ |
-| username | 用户名，2～40 个字符 |
-| email    | 用户邮箱         |
-| password | 密码，6～60 个字符  |
-
----
-
-### 7.2 用户登录
-
-```bash
-curl -X POST http://localhost:8090/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "alice@example.com",
-    "password": "123456"
-  }'
-```
-
-登录成功后，从响应中的 `data.token` 获取 JWT。
-
-```bash
-export TOKEN="<你的JWT Token>"
-```
-
----
-
-### 7.3 创建项目
-
-```bash
-curl -X POST http://localhost:8090/api/v1/projects \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "name": "TaskFlow Pro 迭代开发",
-    "description": "完善任务协作系统的核心功能"
-  }'
-```
-
-创建项目后，当前用户会自动成为该项目的 Owner。
-
----
-
-### 7.4 添加项目成员
-
-```bash
-curl -X POST http://localhost:8090/api/v1/projects/1/members \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "user_id": 2
-  }'
-```
-
-只有项目 Owner 可以添加项目成员。
-
----
-
-### 7.5 创建任务
-
-```bash
-curl -X POST http://localhost:8090/api/v1/projects/1/tasks \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "title": "完成项目 README",
-    "description": "补充项目架构、接口文档和部署说明",
-    "priority": "high"
-  }'
-```
-
-任务字段说明：
-
-| 字段          | 说明                        |
-| ----------- | ------------------------- |
-| title       | 任务标题，2～120 个字符            |
-| description | 任务描述                      |
-| assignee_id | 负责人用户 ID，可选               |
-| priority    | `low` / `medium` / `high` |
-| due_date    | 截止日期，可选                   |
-| status      | `todo` / `doing` / `done` |
-
-未传入优先级时，系统默认使用 `medium`；未传入状态时，默认创建为 `todo`。
-
----
-
-### 7.6 查询任务列表
-
-```bash
-curl -X GET "http://localhost:8090/api/v1/projects/1/tasks?status=todo&keyword=README" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-支持参数：
-
-| 参数      | 说明         |
-| ------- | ---------- |
-| status  | 按任务状态筛选    |
-| keyword | 按任务标题关键词筛选 |
-
----
-
-### 7.7 更新任务状态
-
-```bash
-curl -X PUT http://localhost:8090/api/v1/tasks/1 \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "status": "doing"
-  }'
-```
-
----
-
-### 7.8 发布评论
-
-```bash
-curl -X POST http://localhost:8090/api/v1/tasks/1/comments \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "content": "我已经完成 README 初稿，等待补充截图。"
-  }'
-```
-
----
-
-## 8. 数据库设计
-
-系统启动时通过 GORM 自动迁移以下核心数据表。
-
-### 8.1 users：用户表
-
-| 字段            | 类型说明 | 说明            |
-| ------------- | ---- | ------------- |
-| id            | 主键   | 用户 ID         |
-| username      | 唯一字段 | 用户名           |
-| email         | 唯一字段 | 用户邮箱          |
-| password_hash | 字符串  | bcrypt 加密后的密码 |
-| created_at    | 时间   | 创建时间          |
-| updated_at    | 时间   | 更新时间          |
-
----
-
-### 8.2 projects：项目表
-
-| 字段          | 类型说明 | 说明       |
-| ----------- | ---- | -------- |
-| id          | 主键   | 项目 ID    |
-| name        | 字符串  | 项目名称     |
-| description | 文本   | 项目描述     |
-| owner_id    | 索引字段 | 项目创建者 ID |
-| created_at  | 时间   | 创建时间     |
-| updated_at  | 时间   | 更新时间     |
-
----
-
-### 8.3 project_members：项目成员表
-
-| 字段         | 类型说明   | 说明                 |
-| ---------- | ------ | ------------------ |
-| id         | 主键     | 成员关系 ID            |
-| project_id | 组合唯一索引 | 项目 ID              |
-| user_id    | 组合唯一索引 | 用户 ID              |
-| role       | 字符串    | `owner` 或 `member` |
-| created_at | 时间     | 加入项目时间             |
-
-同一个用户不能重复加入同一个项目。
-
----
-
-### 8.4 tasks：任务表
-
-| 字段          | 类型说明   | 说明                        |
-| ----------- | ------ | ------------------------- |
-| id          | 主键     | 任务 ID                     |
-| project_id  | 索引字段   | 所属项目 ID                   |
-| creator_id  | 索引字段   | 创建人 ID                    |
-| assignee_id | 可空索引字段 | 负责人 ID                    |
-| title       | 字符串    | 任务标题                      |
-| description | 文本     | 任务描述                      |
-| status      | 索引字段   | `todo` / `doing` / `done` |
-| priority    | 索引字段   | `low` / `medium` / `high` |
-| due_date    | 可空时间字段 | 截止时间                      |
-| created_at  | 时间     | 创建时间                      |
-| updated_at  | 时间     | 更新时间                      |
-| deleted_at  | 软删除字段  | 删除时间                      |
-
----
-
-### 8.5 comments：任务评论表
-
-| 字段         | 类型说明 | 说明      |
-| ---------- | ---- | ------- |
-| id         | 主键   | 评论 ID   |
-| task_id    | 索引字段 | 所属任务 ID |
-| user_id    | 索引字段 | 评论用户 ID |
-| content    | 文本   | 评论内容    |
-| created_at | 时间   | 创建时间    |
-
----
-
-### 8.6 逻辑关系
-
-```mermaid
-erDiagram
-    USERS ||--o{ PROJECTS : creates
-    USERS ||--o{ PROJECT_MEMBERS : joins
-    PROJECTS ||--o{ PROJECT_MEMBERS : contains
-    PROJECTS ||--o{ TASKS : contains
-    USERS ||--o{ TASKS : creates
-    USERS ||--o{ TASKS : assigned
-    TASKS ||--o{ COMMENTS : has
-    USERS ||--o{ COMMENTS : writes
-```
-
----
-
-## 9. 快速启动
-
-### 9.1 环境要求
-
-* Docker
-* Docker Compose
-
-### 9.2 克隆并进入项目目录
-
-```bash
-git clone <你的仓库地址>
+git clone https://github.com/zhangzhengzhong44-prog/taskflow-pro.git
 cd taskflow-pro/taskflow-pro
+
+docker compose up --build -d
 ```
 
-> 当前仓库存在一层内嵌项目目录，因此 README 应放在这个内层项目根目录中。后续可将 `backend`、`frontend`、`deploy`、`docs` 与 `docker-compose.yml` 提升到仓库根目录，减少目录层级。
+启动后访问：
 
-### 9.3 一键启动
+- 前端：`http://localhost:3001`
+- 后端健康检查：`http://localhost:8090/health`
+- API 前缀：`http://localhost:8090/api/v1`
 
-```bash
-docker compose up -d --build
-```
-
-查看容器运行状态：
-
-```bash
-docker compose ps
-```
-
-查看后端日志：
-
-```bash
-docker compose logs -f backend
-```
-
-### 9.4 访问地址
-
-| 服务     | 地址                             |
-| ------ | ------------------------------ |
-| 前端页面   | `http://localhost:3001`        |
-| 后端健康检查 | `http://localhost:8090/health` |
-| 后端 API | `http://localhost:8090/api/v1` |
-| MySQL  | `127.0.0.1:3308`               |
-| Redis  | `127.0.0.1:6381`               |
-
-### 9.5 停止服务
+停止服务：
 
 ```bash
 docker compose down
 ```
 
-同时删除本地数据卷：
+> `docker-compose.yml` 中的账号和 JWT 配置仅用于本地演示；部署到真实环境时应改为通过 `.env` 或密钥管理服务注入。
 
-```bash
-docker compose down -v
+## API 概览
+
+除注册、登录和健康检查外，其余接口需携带：
+
+```http
+Authorization: Bearer <token>
 ```
 
-> `docker compose down -v` 会删除本地 MySQL 和 Redis 数据，请谨慎执行。
+| 模块 | 接口 |
+| --- | --- |
+| 认证 | `POST /auth/register` · `POST /auth/login` · `GET /auth/me` |
+| 项目 | `GET /projects` · `POST /projects` · `POST /projects/:id/members` · `GET /projects/:id/stats` |
+| 任务 | `GET /projects/:id/tasks?status=&keyword=` · `POST /projects/:id/tasks` · `PUT /tasks/:id` · `DELETE /tasks/:id` |
+| 评论 | `GET /tasks/:id/comments` · `POST /tasks/:id/comments` |
 
----
+注册示例：
 
-## 10. 配置说明
+```bash
+curl -X POST http://localhost:8090/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"demo","email":"demo@example.com","password":"123456"}'
+```
 
-后端通过环境变量加载配置，常用配置如下：
-
-| 环境变量           | 说明          | 默认值            |
-| -------------- | ----------- | -------------- |
-| APP_PORT       | 后端端口        | 8080           |
-| GIN_MODE       | Gin 运行模式    | release        |
-| DB_HOST        | MySQL 主机地址  | localhost      |
-| DB_PORT        | MySQL 端口    | 3306           |
-| DB_USER        | MySQL 用户名   | taskflow       |
-| DB_PASSWORD    | MySQL 密码    | -              |
-| DB_NAME        | 数据库名称       | taskflow_pro   |
-| REDIS_ADDR     | Redis 地址    | localhost:6379 |
-| REDIS_PASSWORD | Redis 密码    | 空              |
-| REDIS_DB       | Redis 数据库编号 | 0              |
-| JWT_SECRET     | JWT 签名密钥    | 开发环境默认值        |
-| JWT_TTL_HOURS  | JWT 有效期     | 24             |
-
-生产部署时应通过 `.env`、CI/CD Secret 或服务器环境变量注入数据库密码和 JWT Secret，不应将真实密钥提交到仓库。
-
----
-
-## 11. 测试
-
-进入后端目录：
+## 测试
 
 ```bash
 cd backend
-```
-
-运行全部测试：
-
-```bash
 go test ./...
 ```
 
-查看详细测试输出：
+测试覆盖认证、JWT 鉴权、任务状态校验及项目成员权限等核心业务链路。
 
-```bash
-go test -v ./...
-```
-
-Windows 环境下如遇到 Go 缓存权限或路径问题，可执行：
-
-```powershell
-$env:GOCACHE = Join-Path $env:TEMP "go-build-cache"
-go test ./...
-```
-
-当前测试主要覆盖：
-
-* 用户注册与登录
-* JWT 鉴权中间件
-* 任务状态更新
-* 非法任务状态校验
-* 项目成员权限校验
-* 使用 Fake Repository 隔离数据库依赖
-
----
-
-## 12. 缓存与权限设计
-
-### Redis 缓存
-
-项目任务统计数据使用 Redis 缓存：
+## 项目结构
 
 ```text
-project:{project_id}:stats
+taskflow-pro/
+├── backend/
+│   ├── cmd/server/          # 服务入口
+│   └── internal/
+│       ├── handler/         # HTTP 请求处理
+│       ├── middleware/      # JWT、限流、CORS、日志
+│       ├── model/           # 数据模型与请求 DTO
+│       ├── repository/      # GORM 数据访问
+│       └── service/         # 核心业务逻辑
+├── frontend/                # 原生前端 + Nginx
+├── docs/                    # 测试说明
+└── docker-compose.yml       # 一键启动 MySQL、Redis、后端、前端
 ```
-
-缓存内容包括：
-
-```text
-total：任务总数
-todo：待办任务数
-doing：进行中任务数
-done：已完成任务数
-```
-
-缓存有效期为 2 分钟。
-
-当用户创建、更新或删除任务后，系统会删除对应项目统计缓存。下一次查询统计数据时，从数据库重新计算并写入缓存。
-
-### 权限控制
-
-| 操作     | 权限要求     |
-| ------ | -------- |
-| 创建项目   | 已登录用户    |
-| 查看项目任务 | 项目成员     |
-| 创建任务   | 项目成员     |
-| 更新任务   | 项目成员     |
-| 删除任务   | 项目成员     |
-| 查看评论   | 项目成员     |
-| 发表评论   | 项目成员     |
-| 添加项目成员 | 项目 Owner |
-
----
-
-## 13. 后续优化方向
-
-* 使用 `.env` 管理本地开发配置，避免在 Compose 文件中直接保留开发凭据
-* 增加数据库版本迁移工具，例如 golang-migrate
-* 使用 GitHub Actions 自动执行 `go test ./...`、`go vet ./...` 和 Docker 构建
-* 优化 CORS 白名单配置，避免生产环境允许任意来源访问
-* 增加分页、任务负责人筛选与操作日志
-* 支持项目角色细分，例如管理员、成员、访客
-* 增加 Redis 缓存命中率与接口性能监控
-* 增加接口文档页面，例如 Swagger / OpenAPI
-
----
-
-## 14. 项目亮点
-
-* 使用 Go + Gin + GORM + MySQL + Redis 完成完整的任务协同业务闭环
-* 通过 JWT 和 bcrypt 实现用户认证与密码安全存储
-* 使用 Service 层统一处理成员权限、缓存失效和业务规则
-* 使用 Redis 缓存项目统计数据，并在任务变更后主动失效缓存
-* 使用 Docker Compose 一键启动前端、后端、MySQL 和 Redis
-* 通过 Fake Repository 与 httptest 编写核心业务单元测试
-* 具备从接口、业务、缓存、数据库到容器化部署的完整后端工程实践
